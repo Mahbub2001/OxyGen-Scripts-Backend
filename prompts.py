@@ -57,8 +57,9 @@ Completion Mode: Complete the "{language}" code the user submitted.
 '''
 
 EXTRACT_BOOK_CONTEXT='''
-You have to only give the book content from the docs {docs} 
-strictly dont give any other response
+\n You are an book extractor.
+Give all contents which are in the docs {docs} 
+You dont need to do any changes. Only give the contents of the docs {docs}
 '''
 
 ALTERATION_CONTEXT = '''

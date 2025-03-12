@@ -1,3 +1,4 @@
+import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from openai import OpenAI
 from datetime import datetime
@@ -10,10 +11,11 @@ from prompts import (
     LEETCODE_CONTEXT, SHORTENING_CONTEXT,EXTRACT_BOOK_CONTEXT
 )
 from langchain.prompts import PromptTemplate
-import sqlite3
 from dotenv import load_dotenv
-import os
 from pinecone import Pinecone
+import json
+
+
 load_dotenv()
 
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
@@ -93,6 +95,76 @@ class CodeBuddyConsole:
             results.append((similarity, doc_id, chunk_id, chunk))
 
         return results
+    
+    async def extract_book_and_page(self, query):
+        """
+        Extract the book name and page number from the user query using the OpenAI API.
+        Args:
+            query (str): The user query.
+        Returns:
+            tuple: (book_name, page_number) or (None, None) if not found.
+        """        
+        prompt = f"""Extract the book name and page number from this query:
+        {query}
+        
+        Return ONLY in JSON format with these keys:
+        {{
+            "book_name": "filename.pdf",
+            "page_number": 123
+        }}
+        Return null for missing values. Do NOT include any other text or formatting."""
+        
+        try:
+            completion = client.chat.completions.create(
+                model="qwen/qwq-32b:free",
+                messages=[{
+                    "role": "user",
+                    "content": prompt
+                }],
+                temperature=0.1 
+            )
+            
+            response = completion.choices[0].message.content
+            print(f"Raw extraction response: {response}")  
+            
+            response = response.strip().replace('```json', '').replace('```', '')
+            data = json.loads(response)
+            
+            book_name = data.get("book_name") + ".pdf"
+            page_number = data.get("page_number")
+            
+            if book_name and page_number:
+                return book_name, page_number
+            return None, None
+            
+        except json.JSONDecodeError:
+            print("Failed to parse JSON response")
+            return None, None
+        except Exception as e:
+            print(f"Extraction error: {str(e)}")
+            return None, None
+        
+    def query_page(self,book_id, page_number):
+        """Query all text chunks from a specific book and page number."""
+        model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+        dummy_vector = [0.0] * model.get_sentence_embedding_dimension()
+        filter = {
+            'book_id': {'$eq': book_id},
+            'page_number': {'$eq': page_number}
+        }
+        
+        try:
+            results = index.query(
+                vector=dummy_vector,
+                top_k=10000,
+                include_metadata=True,
+                filter=filter
+            )
+            sorted_chunks = sorted(results.matches, key=lambda x: x.metadata['chunk_order'])
+            return [chunk.metadata['text'] for chunk in sorted_chunks]
+        except Exception as e:
+            print(f"Error querying Pinecone: {e}")
+            return []
 
     async def get_conversation_history(self, session_id):
         MONGODB_CONNECTION_STRING = os.getenv("MONGO_URL")
@@ -112,15 +184,33 @@ class CodeBuddyConsole:
 
         history = await self.get_conversation_history(session_id)
         chat_history = self.format_conversation_history(history)
-        results = self.retrieve_relevant_docs(query,top_k=5)
         docs_text=""
-        for similarity, doc_id, chunk_id, chunk in results:
-            # print(f"Similarity: {similarity:.4f}")
-            # print(f"Book ID: {doc_id}")
-            # print(f"Chunk ID: {chunk_id}")
-            print(f"Text: {chunk}")
-            docs_text+=chunk
+        
+        if scenario == "Extract From Book":
+            book_name, page_number = await self.extract_book_and_page(query)
             
+            # print(f"Extracted book name: {book_name}")  
+            # print(f"Extracted page number: {page_number}")  
+            if not book_name or not page_number:
+                yield "Please specify the book name and page number in your query."
+                return
+
+            results = self.query_page(book_name, page_number)
+            if not results:
+                yield "No content found for the specified book and page."
+                return
+
+            docs_text = results
+            # docs_text = "\n\n".join(results)
+        else:
+            results = self.retrieve_relevant_docs(query,top_k=5)
+            for similarity, doc_id, chunk_id, chunk in results:
+                # print(f"Similarity: {similarity:.4f}")
+                # print(f"Book ID: {doc_id}")
+                # print(f"Chunk ID: {chunk_id}")
+                print(f"Text: {chunk}")
+                docs_text+=chunk
+                
         if not history:
             prompt_template = PromptTemplate(
                 input_variables=['input', 'language', 'scenario', 'scenario_context', 'code_context', 'libraries', 'docs', 'chat_history'],
@@ -172,6 +262,8 @@ class CodeBuddyConsole:
         })
         
         formatted_response = "\n".join(line for line in response.splitlines() if line.strip())
+        
+        # print(f"AI Response: {formatted_response}")
         yield formatted_response
 
     async def generate_openai_response(self, prompt_template, **kwargs):
