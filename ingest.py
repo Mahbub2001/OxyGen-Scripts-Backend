@@ -140,10 +140,7 @@ if __name__ == "__main__":
 #     print(f"Chunk {i+1}: {text}")
 
 
-# import numpy as np
-# from sentence_transformers import SentenceTransformer
-
-# def retrieve_relevant_docs(query, top_k=3, model_name="sentence-transformers/all-MiniLM-L6-v2", index=None):
+# def retrieve_relevant_docs(query, top_k=5, model_name="sentence-transformers/all-MiniLM-L6-v2", index=None):
 #     """
 #     Retrieve relevant documents from Pinecone based on the query.
 
@@ -186,3 +183,20 @@ if __name__ == "__main__":
 #         results.append((similarity, doc_id, chunk_id, chunk))
 
 #     return results
+
+
+# # Initialize Pinecone
+# pc = Pinecone(api_key=pinecone_api_key)
+# index = pc.Index(index_name)
+
+# # Query for relevant documents
+# query = "code of for loop?"
+# results = retrieve_relevant_docs(query, top_k=3, index=index)
+
+# # Display results
+# for similarity, doc_id, chunk_id, chunk in results:
+#     print(f"Similarity: {similarity:.4f}")
+#     print(f"Book ID: {doc_id}")
+#     print(f"Chunk ID: {chunk_id}")
+#     print(f"Text: {chunk}")
+#     print("-" * 50)

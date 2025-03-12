@@ -56,6 +56,11 @@ Completion Mode: Complete the "{language}" code the user submitted.
 \nAlso provide an explanation for how you completed the code and how you implemented such a completion.
 '''
 
+EXTRACT_BOOK_CONTEXT='''
+You have to only give the book content from the docs {docs} 
+strictly dont give any other response
+'''
+
 ALTERATION_CONTEXT = '''
 
 '''

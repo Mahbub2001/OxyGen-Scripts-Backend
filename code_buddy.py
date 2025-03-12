@@ -7,15 +7,19 @@ from prompts import (
     CHAT_TEMPLATE, INITIAL_TEMPLATE, CORRECTION_CONTEXT,
     COMPLETION_CONTEXT, OPTIMIZATION_CONTEXT, GENERAL_ASSISTANT_CONTEXT,
     GENERATION_CONTEXT, COMMENTING_CONTEXT, EXPLANATION_CONTEXT,
-    LEETCODE_CONTEXT, SHORTENING_CONTEXT
+    LEETCODE_CONTEXT, SHORTENING_CONTEXT,EXTRACT_BOOK_CONTEXT
 )
 from langchain.prompts import PromptTemplate
 import sqlite3
 from dotenv import load_dotenv
 import os
-
+from pinecone import Pinecone
 load_dotenv()
 
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
+pc = Pinecone(api_key=pinecone_api_key)
+index_name = "oxygen"
+index = pc.Index(index_name)
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPEN_ROUTER_API"),
@@ -50,34 +54,45 @@ class CodeBuddyConsole:
             "Code Generation": GENERATION_CONTEXT,
             "Code Commenting": COMMENTING_CONTEXT,
             "Code Explanation": EXPLANATION_CONTEXT,
+            "Extract From Book":EXTRACT_BOOK_CONTEXT,
             "LeetCode Solver": LEETCODE_CONTEXT,
             "Code Shortener": SHORTENING_CONTEXT
         }
 
         self.languages = ['Python', 'GoLang', 'TypeScript', 'JavaScript',
                           'Java', 'C', 'C++', 'C#', 'R', 'SQL']
+    def retrieve_relevant_docs(self, query, top_k=5, model_name="sentence-transformers/all-MiniLM-L6-v2"):
+        """
+        Retrieve relevant documents from Pinecone based on the query.
+        Args:
+            query (str): The query string.
+            top_k (int): Number of top results to return.
+            model_name (str): Name of the Sentence Transformer model to use.
+        Returns:
+            list: List of tuples containing (similarity, doc_id, chunk_id, chunk).
+        """
+        model = SentenceTransformer(model_name)
+        query_embedding = model.encode(query).tolist()
 
-    def retrieve_relevant_docs(self, query, top_k=3, model_name="sentence-transformers/all-MiniLM-L6-v2"):
-        conn = sqlite3.connect("embeddings.db")
-        cursor = conn.cursor()
-
-        query_embedding = generate_embeddings(query, model_name)
-        query_embedding_array = np.array(query_embedding, dtype=np.float32)
-
-        cursor.execute('''
-            SELECT doc_id, chunk_id, chunk, embedding
-            FROM embeddings
-        ''')
+        try:
+            query_results = index.query(
+                vector=query_embedding,
+                top_k=top_k,
+                include_metadata=True
+            )
+        except Exception as e:
+            print(f"Error querying Pinecone: {e}")
+            return []
 
         results = []
-        for doc_id, chunk_id, chunk, embedding_blob in cursor.fetchall():
-            embedding = np.frombuffer(embedding_blob, dtype=np.float32)
-            similarity = np.dot(query_embedding_array, embedding) / (np.linalg.norm(query_embedding_array) * np.linalg.norm(embedding))
+        for match in query_results.matches:
+            similarity = match.score  
+            doc_id = match.metadata.get("book_id", "unknown") 
+            chunk_id = match.id  
+            chunk = match.metadata.get("text", "") 
             results.append((similarity, doc_id, chunk_id, chunk))
 
-        results.sort(reverse=True, key=lambda x: x[0])
-
-        return results[:top_k]
+        return results
 
     async def get_conversation_history(self, session_id):
         MONGODB_CONNECTION_STRING = os.getenv("MONGO_URL")
@@ -97,10 +112,15 @@ class CodeBuddyConsole:
 
         history = await self.get_conversation_history(session_id)
         chat_history = self.format_conversation_history(history)
-
-        relevant_docs = self.retrieve_relevant_docs(query)
-        docs_text = "\n\n".join([doc[3] for doc in relevant_docs])
-
+        results = self.retrieve_relevant_docs(query,top_k=5)
+        docs_text=""
+        for similarity, doc_id, chunk_id, chunk in results:
+            # print(f"Similarity: {similarity:.4f}")
+            # print(f"Book ID: {doc_id}")
+            # print(f"Chunk ID: {chunk_id}")
+            print(f"Text: {chunk}")
+            docs_text+=chunk
+            
         if not history:
             prompt_template = PromptTemplate(
                 input_variables=['input', 'language', 'scenario', 'scenario_context', 'code_context', 'libraries', 'docs', 'chat_history'],
@@ -163,7 +183,7 @@ class CodeBuddyConsole:
             #     "X-Title": os.getenv("YOUR_SITE_NAME"),  # Optional. Site title for rankings on openrouter.ai.
             # },
             extra_body={},
-            model="qwen/qwen-2.5-coder-32b-instruct:free", 
+            model="qwen/qwq-32b:free", 
             messages=[
                 {
                     "role": "user",
