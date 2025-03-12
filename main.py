@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware  
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -7,7 +8,8 @@ import uuid
 from code_buddy import CodeBuddyConsole
 import uvicorn
 from dotenv import load_dotenv
-import os
+from typing import List
+from analyze_code import analyze_codes, generate_openai_response
 
 app = FastAPI()
 load_dotenv()
@@ -37,6 +39,13 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     response: str
     session_id: str
+    
+class CodeAnalysisResponse(BaseModel):
+    student_name: str
+    file_path: str
+    comments: List[str]
+    rank: int
+
 
 @app.post("/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
@@ -65,10 +74,16 @@ async def process_query(request: QueryRequest):
     await conversations_collection.insert_one(conversation)
 
     return QueryResponse(response=response, session_id=session_id)
+
 @app.get("/history/{session_id}")
 async def get_history(session_id: str):
     history = await conversations_collection.find({"session_id": session_id}).sort("timestamp").to_list(100)
     return {"history": history}
+
+
+@app.post("/analyze-codes")
+async def analyze_codes_endpoint(files: List[UploadFile] = File(...), question: str = None):
+    return await analyze_codes(files, question)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
