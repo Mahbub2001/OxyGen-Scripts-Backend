@@ -8,3 +8,6 @@ pymongo
 langchain-core 
 langchain
 openai
+pypdf
+pinecone
+uuid

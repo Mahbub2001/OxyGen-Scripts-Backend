@@ -163,7 +163,7 @@ class CodeBuddyConsole:
             #     "X-Title": os.getenv("YOUR_SITE_NAME"),  # Optional. Site title for rankings on openrouter.ai.
             # },
             extra_body={},
-            model="qwen/qwq-32b:free", 
+            model="qwen/qwen-2.5-coder-32b-instruct:free", 
             messages=[
                 {
                     "role": "user",
