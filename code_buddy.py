@@ -208,7 +208,7 @@ class CodeBuddyConsole:
                 # print(f"Similarity: {similarity:.4f}")
                 # print(f"Book ID: {doc_id}")
                 # print(f"Chunk ID: {chunk_id}")
-                print(f"Text: {chunk}")
+                # print(f"Text: {chunk}")
                 docs_text+=chunk
                 
         if not history:

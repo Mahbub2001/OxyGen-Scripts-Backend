@@ -49,9 +49,10 @@ class CodeAnalysisResponse(BaseModel):
 
 @app.post("/query", response_model=QueryResponse)
 async def process_query(request: QueryRequest):
+    # print(f"Incoming request payload: {request.dict()}")
     session_id = request.session_id or str(uuid.uuid4())
     
-    print(f"Processing query for session_id: {request.query}")
+    # print(f"Processing query for session_id: {request.query}")
     
     response_generator = code_buddy.process_query_stream(
         language="c", 
