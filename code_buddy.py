@@ -106,7 +106,7 @@ class CodeBuddyConsole:
         """        
         prompt = f"""Extract the book name and page number from this query:
         {query}
-        
+        If book name is Cbook then the page number is (query page number in the query + 40)
         Return ONLY in JSON format with these keys:
         {{
             "book_name": "filename.pdf",
@@ -184,8 +184,7 @@ class CodeBuddyConsole:
 
         history = await self.get_conversation_history(session_id)
         chat_history = self.format_conversation_history(history)
-        docs_text=""
-        
+        docs_text=""        
         if scenario == "Extract From Book":
             book_name, page_number = await self.extract_book_and_page(query)
             
@@ -262,7 +261,7 @@ class CodeBuddyConsole:
         })
         
         formatted_response = "\n".join(line for line in response.splitlines() if line.strip())
-        
+        print("docs_text",docs_text)
         # print(f"AI Response: {formatted_response}")
         yield formatted_response
 

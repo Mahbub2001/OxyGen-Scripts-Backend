@@ -10,6 +10,7 @@ INITIAL_TEMPLATE = '''
     \n Strictly Dont answer if there aren't anything  found in docs {docs} according to the query. Say I cant ans that
     \nThe user has specified the mode to "{scenario}"
     \n{scenario} SCENARIO CONTEXT: {scenario_context}
+    \n If scenario is "Extract from book" then you should give all contents which are in the docs: {docs}
     \nUSER {language} CODE INPUT: 
     \n{input}
     \nADDITIONAL CONTEXT FROM USER: {code_context}
@@ -25,6 +26,7 @@ CHAT_TEMPLATE = '''
     \nYou should come off as helpful, confident, multifunctional, and welcoming.
     \nThe user has specified the mode to "Code {scenario}"
     \n{scenario} SCENARIO CONTEXT: {scenario_context}
+    \n if scenario is "Extract from book" then you should give all contents which are in the docs: {docs}. dont do any changes.dont take previous history
     \nUSER {language} CODE INPUT: 
     \n{code_input}
     \nCHAT HISTORY:
@@ -57,9 +59,8 @@ Completion Mode: Complete the "{language}" code the user submitted.
 '''
 
 EXTRACT_BOOK_CONTEXT='''
-\n You are an book extractor.
-Give all contents which are in the docs {docs} 
-You dont need to do any changes. Only give the contents of the docs {docs}
+\nGive all contents which are in the docs: {docs} 
+\nStrictly You dont need to do any changes. Only give the contents of the docs: {docs}
 '''
 
 ALTERATION_CONTEXT = '''
