@@ -11,3 +11,6 @@ openai
 pypdf
 pinecone
 uuid
+passlib
+bcrypt 
+python-jose[cryptography]
