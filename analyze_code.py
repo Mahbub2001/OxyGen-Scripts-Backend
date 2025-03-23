@@ -26,6 +26,7 @@ async def analyze_codes(files: List[UploadFile], question: str = None) -> List[D
             "1. Original student code with comments indicating improvements or errors.\n"
             "2. A perfect version of the code (if applicable).\n"
             "3. Explanations for the improvements or errors in a comment block.\n\n"
+            "You should write the the any comment in between /* and */.\n\n"
             "Format the response as follows:\n"
             "\n"
             "// Original student code with comments\n"
