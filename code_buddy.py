@@ -15,7 +15,6 @@ from dotenv import load_dotenv
 from pinecone import Pinecone
 import json
 
-
 load_dotenv()
 
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
@@ -63,6 +62,59 @@ class CodeBuddyConsole:
 
         self.languages = ['Python', 'GoLang', 'TypeScript', 'JavaScript',
                           'Java', 'C', 'C++', 'C#', 'R', 'SQL']
+        
+    async def describe_image(self, image_data: str) -> str:
+        """
+        Describe the image using OpenRouter's Gemini model.
+        
+        Args:
+            image_data: Base64 encoded image string
+            
+        Returns:
+            str: Description of the image
+        """
+        try:
+            image_url = f"data:image/jpeg;base64,{image_data}"
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.getenv("OPEN_ROUTER_API"),
+            )
+            
+            completion = client.chat.completions.create(
+                extra_headers={
+                    # "HTTP-Referer": os.getenv("YOUR_SITE_URL", "http://localhost:3000"),
+                    # "X-Title": os.getenv("YOUR_SITE_NAME", "CodeBuddy"),
+                },
+                extra_body={},
+                model="google/gemma-3-27b-it:free", 
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Extract the content of this image using our vision model."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": image_url
+                                }
+                            }
+                        ]
+                    }
+                ]
+            )
+            
+            if not completion.choices or not completion.choices[0].message.content:
+                return "The image description could not be generated."
+                
+            return completion.choices[0].message.content
+            
+        except Exception as e:
+            print(f"Error describing image with OpenRouter: {str(e)}")
+            return "Unable to process the image with our vision model."
+        
     def retrieve_relevant_docs(self, query, top_k=5, model_name="sentence-transformers/all-MiniLM-L6-v2"):
         """
         Retrieve relevant documents from Pinecone based on the query.
@@ -174,9 +226,21 @@ class CodeBuddyConsole:
         history = await conversations_collection.find({"session_id": session_id}).sort("timestamp").to_list(100)
         return [(entry['user_query'], entry['ai_response']) for entry in history]
 
-    async def process_query_stream(self, language, code, query, scenario, session_id):
+    async def process_query_stream(self, language, code, query, scenario, session_id, images=None):
         if scenario not in self.scenario_map:
             raise ValueError(f"Invalid scenario. Choose from: {list(self.scenario_map.keys())}")
+        
+        image_descriptions = []
+        image_text = ""
+        if images:
+            for image_data in images[:3]:
+                if image_data:  
+                    description = await self.describe_image(image_data)
+                    image_descriptions.append(f"Image description: {description}")
+        if image_descriptions:
+            image_text = "\n\n".join(image_descriptions)
+            
+        print(f"Image text: {image_text}")
 
         self.current_state['scenario'] = scenario
         self.current_state['scenario_context'] = self.scenario_map[scenario]

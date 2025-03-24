@@ -15,3 +15,4 @@ passlib
 bcrypt 
 python-jose[cryptography]
 websockets
+google-generativeai

@@ -46,6 +46,7 @@ class QueryRequest(BaseModel):
     code: str
     scenario: str
     session_id: str = None
+    images: List[str] = []
 
 class QueryResponse(BaseModel):
     response: str
@@ -140,7 +141,8 @@ async def process_query(request: QueryRequest):
         code=request.code,
         query=request.query,
         scenario=request.scenario,
-        session_id=session_id
+        session_id=session_id,
+        images=request.images
     )
     
     response = ""
