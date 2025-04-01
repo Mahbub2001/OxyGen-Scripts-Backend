@@ -64,7 +64,7 @@ class CodeDetector:
                 structure_analysis.get("indicators", [])
             ),
             "suspicious_sections": suspicious_sections,
-            "model_used": "deepseek/deepseek-r1:free",
+            "model_used": "deepseek/deepseek-r1-distill-llama-70b:free",
             "warnings": self._generate_warnings(code, language),
             "details": {
                 "pattern_analysis": pattern_analysis,
@@ -90,7 +90,7 @@ class CodeDetector:
                     "HTTP-Referer": "https://github.com",
                     "X-Title": "CodeDetector",
                 },
-                model="deepseek/deepseek-r1:free",
+                model="deepseek/deepseek-r1-distill-llama-70b:free",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 max_tokens=1000,
@@ -101,7 +101,6 @@ class CodeDetector:
                 
             response_content = completion.choices[0].message.content
             # print("Raw LLM response:", response_content)
-            
             try:
                 return self._parse_llm_response(response_content)
             except ValueError as e:
@@ -447,7 +446,6 @@ class CodeDetector:
             indicators.append("Inconsistent brace style")
             confidence += 5
         
-        # Check line length variation
         if len(code.splitlines()) > 10:
             line_lengths = [len(line) for line in code.splitlines()]
             avg_length = sum(line_lengths) / len(line_lengths)
@@ -534,7 +532,7 @@ class CodeDetector:
     
     def _combine_confidence(self, *confidences: float) -> float:
         """Combine multiple confidence scores with weighted average"""
-        weights = [0.3, 0.4, 0.15, 0.15]  
+        weights = [0.4, 0.5, 0.2, 0.2]  
         weighted_sum = sum(c * w for c, w in zip(confidences, weights))
         return min(100, weighted_sum * 1.1)  
     
