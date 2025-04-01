@@ -240,7 +240,7 @@ class CodeBuddyConsole:
         if image_descriptions:
             image_text = "\n\n".join(image_descriptions)
             
-        print(f"Image text: {image_text}")
+        # print(f"Image text: {image_text}")
 
         self.current_state['scenario'] = scenario
         self.current_state['scenario_context'] = self.scenario_map[scenario]
@@ -285,6 +285,8 @@ class CodeBuddyConsole:
                 template=CHAT_TEMPLATE
             )
             most_recent_ai_message = history[-1][1] if history else ""
+            
+        query = query + image_text
 
         if not history:
             response = await self.generate_openai_response(

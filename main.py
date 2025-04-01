@@ -13,6 +13,8 @@ from analyze_code import analyze_codes, generate_openai_response
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from detector import CodeDetector
+from typing import Optional
 
 app = FastAPI()
 load_dotenv()
@@ -40,7 +42,19 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+class CodeSubmission(BaseModel):
+    code: str
+    language: str = "c"
+    threshold: Optional[float] = 70.0 
 
+class DetectionResult(BaseModel):
+    is_ai_generated: bool
+    confidence: float
+    language: str
+    indicators: list[str]
+    suspicious_sections: list[str]
+    model_used: str
+    warnings: Optional[list[str]] = None
 class QueryRequest(BaseModel):
     query: str
     code: str
@@ -133,9 +147,7 @@ async def protected_route(token: str = Depends(oauth2_scheme)):
 async def process_query(request: QueryRequest):
     # print(f"Incoming request payload: {request.dict()}")
     session_id = request.session_id or str(uuid.uuid4())
-    
     # print(f"Processing query for session_id: {request.query}")
-    
     response_generator = code_buddy.process_query_stream(
         language="c", 
         code=request.code,
@@ -168,6 +180,34 @@ async def get_history(session_id: str):
 @app.post("/analyze-codes")
 async def analyze_codes_endpoint(files: List[UploadFile] = File(...), question: str = None):
     return await analyze_codes(files, question)
+
+detector = CodeDetector()
+
+@app.post("/detect", response_model=DetectionResult)
+async def detect_code(
+    submission: CodeSubmission,
+    threshold: float = None
+):
+    try:
+        actual_threshold = submission.threshold if submission.threshold is not None else 70.0
+        
+        result = await detector.detect(
+            code=submission.code,
+            language=submission.language,
+            threshold=actual_threshold
+        )
+        return {
+            "is_ai_generated": result["is_ai_generated"],
+            "confidence": result["confidence"],
+            "language": result["language"],
+            "indicators": result["indicators"],
+            "suspicious_sections": result["suspicious_sections"],
+            "model_used": result["model_used"],
+            "warnings": result.get("warnings", []),
+            "details": result.get("details", {})
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
