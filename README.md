@@ -38,21 +38,35 @@ The AI assistant provides the following features:
 - **AI-Powered Insights**: Highlight sections that are likely copied and suggest originality improvements.
 
 ## API Integration
-The software leverages **RapidAPI** for code submission.
-- RapidAPI Hub: [Visit Here](https://rapidapi.com/hub)
+The websites
+- MongoDB: [Visit Here](https://www.mongodb.com/)
+- OpenRouter: [Visit Here](https://openrouter.ai/)
+- Pinecone: [Visit Here](https://app.pinecone.io/)
+
+## Pre-Installation Requirements
+create a new file called `.env` and add the following lines:
+MONGO_URL = your_mongo_url
+OPEN_ROUTER_API= your_open_router_api
+PINECONE_API_KEY= your_pinecone_api_key
+SECRET_KEY= your_secret_key
 
 ## Installation
 1. Clone the repository:
    ```sh
-   git clone https://github.com/Mahbub2001/OxyGen-Scripts.git
+   git clone https://github.com/Mahbub2001/OxyGen-Scripts-Backend.git
    ```
-2. Install dependencies:
+2. Create a new virtual environment and activate it:
    ```sh
-   npm install
+   python -m venv venv
+   source venv/Scripts/activate
    ```
-3. Run the application:
+3. Install dependencies:
    ```sh
-   npm run dev
+   pip install -r requirements.txt
+   ```
+4. Run the application:
+   ```sh
+   uvicorn main:app --reload
    ```
 
 ## Frontend Link:
